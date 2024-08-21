@@ -1,26 +1,19 @@
 package qyweixin
 
 import (
-	"bytes"
-	"context"
 	"fmt"
 	"github.com/nuominmin/notifier"
-	"io"
 )
 
-type notify struct {
-	n notifier.Notifier
-}
+const (
+	WEBHOOK_URL_FORMAT = "https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=%s"
+	TEXT_BODY_FORMAT   = `{"msgtype": "text", "text": {"content": "%s"}}`
+)
 
 func NewNotifier(token string) notifier.Notifier {
-	webhookURL := fmt.Sprintf("https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=%s", token)
-	return &notify{
-		n: notifier.New(webhookURL, func(text string) io.Reader {
-			return bytes.NewBufferString(fmt.Sprintf(`{"msgtype": "text", "text": {"content": "%s"}}`, text))
-		}),
-	}
+	return notifier.NewNotifier(fmt.Sprintf(WEBHOOK_URL_FORMAT, token), TEXT_BODY_FORMAT)
 }
 
-func (n *notify) SendMessage(ctx context.Context, message string) error {
-	return n.n.SendMessage(ctx, message)
+func NewDelayNotifier(token string) notifier.Notifier {
+	return notifier.NewDelayNotifier(fmt.Sprintf(WEBHOOK_URL_FORMAT, token), TEXT_BODY_FORMAT)
 }
