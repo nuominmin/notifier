@@ -1,33 +1,33 @@
 package notifier
 
 import (
+	"bytes"
 	"context"
 	"fmt"
-	"io"
 	"net/http"
 )
 
-// Notifier 是一个通用的消息通知接口，支持泛型 T
+// Notifier 消息通知接口
 type Notifier interface {
 	SendMessage(ctx context.Context, message string) error
 }
 
 type Notify struct {
-	client     *http.Client
-	webhookURL string
-	method     string
-	headers    map[string]string
-	formatFunc func(message string) io.Reader // 泛型消息转换为 JSON 的函数
+	client         *http.Client
+	webhookURL     string
+	method         string
+	headers        map[string]string
+	textBodyFormat string // 消息转换为 JSON 的函数
 }
 
-// New 创建一个新的通知实例，支持泛型 T
-func New(webhookURL string, formatFunc func(text string) io.Reader) Notifier {
+// NewNotifier 创建一个新的通知实例
+func NewNotifier(webhookURL string, textBodyFormat string) Notifier {
 	return &Notify{
-		client:     http.DefaultClient,
-		webhookURL: webhookURL,
-		method:     http.MethodPost, // 默认方法为 POST
-		headers:    map[string]string{"Content-Type": "application/json"},
-		formatFunc: formatFunc,
+		client:         http.DefaultClient,
+		webhookURL:     webhookURL,
+		method:         http.MethodPost, // 默认方法为 POST
+		headers:        map[string]string{"Content-Type": "application/json"},
+		textBodyFormat: textBodyFormat,
 	}
 }
 
@@ -44,7 +44,7 @@ func (n *Notify) SetRequestConfig(method string, headers map[string]string) {
 
 // SendMessage 发送消息到指定的 Webhook URL
 func (n *Notify) SendMessage(ctx context.Context, message string) error {
-	req, err := http.NewRequestWithContext(ctx, n.method, n.webhookURL, n.formatFunc(message))
+	req, err := http.NewRequestWithContext(ctx, n.method, n.webhookURL, bytes.NewBufferString(fmt.Sprintf(n.textBodyFormat, message)))
 	if err != nil {
 		return err
 	}
