@@ -48,6 +48,9 @@ func (n *Notify) SetRequestConfig(method string, headers map[string]string) {
 
 func (n *Notify) getWebhookUrl() string {
 	totalToken := uint64(len(n.tokens))
+	if totalToken == 0 {
+		return ""
+	}
 	idx := atomic.AddUint64(&n.currTokenIdx, 1) - 1
 	if idx >= totalToken*100 {
 		atomic.StoreUint64(&n.currTokenIdx, 0) // 重置为 0，防止溢出
@@ -58,9 +61,14 @@ func (n *Notify) getWebhookUrl() string {
 
 // SendMessage 发送消息到指定的 Webhook URL
 func (n *Notify) SendMessage(ctx context.Context, message string) error {
-	req, err := http.NewRequestWithContext(ctx, n.method, n.getWebhookUrl(), bytes.NewBufferString(fmt.Sprintf(n.textBodyFormat, message)))
+	webhookUrl := n.getWebhookUrl()
+	if webhookUrl == "" {
+		return fmt.Errorf("no webhook url")
+	}
+
+	req, err := http.NewRequestWithContext(ctx, n.method, webhookUrl, bytes.NewBufferString(fmt.Sprintf(n.textBodyFormat, message)))
 	if err != nil {
-		return err
+		return fmt.Errorf("create request error: %v", err)
 	}
 
 	for key, value := range n.headers {
@@ -69,7 +77,7 @@ func (n *Notify) SendMessage(ctx context.Context, message string) error {
 
 	var resp *http.Response
 	if resp, err = n.client.Do(req); err != nil {
-		return err
+		return fmt.Errorf("send request error: %v", err)
 	}
 	defer resp.Body.Close()
 
