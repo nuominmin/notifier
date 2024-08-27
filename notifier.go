@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"sync/atomic"
 )
 
 // Notifier 消息通知接口
@@ -13,21 +14,24 @@ type Notifier interface {
 }
 
 type Notify struct {
-	client         *http.Client
-	webhookURL     string
-	method         string
-	headers        map[string]string
-	textBodyFormat string // 消息转换为 JSON 的函数
+	client           *http.Client
+	method           string
+	headers          map[string]string
+	webhookUrlFormat string   // 机器人钩子地址格式
+	textBodyFormat   string   // 消息转换为 JSON 的函数模板
+	tokens           []string // 钩子地址所需要的 token
+	currTokenIdx     uint64   // 当前使用 token 的索引
 }
 
 // NewNotifier 创建一个新的通知实例
-func NewNotifier(webhookURL string, textBodyFormat string) Notifier {
+func NewNotifier(webhookUrlFormat string, textBodyFormat string, tokens ...string) Notifier {
 	return &Notify{
-		client:         http.DefaultClient,
-		webhookURL:     webhookURL,
-		method:         http.MethodPost, // 默认方法为 POST
-		headers:        map[string]string{"Content-Type": "application/json"},
-		textBodyFormat: textBodyFormat,
+		client:           http.DefaultClient,
+		method:           http.MethodPost, // 默认方法为 POST
+		headers:          map[string]string{"Content-Type": "application/json"},
+		webhookUrlFormat: webhookUrlFormat,
+		textBodyFormat:   textBodyFormat,
+		tokens:           tokens,
 	}
 }
 
@@ -42,9 +46,19 @@ func (n *Notify) SetRequestConfig(method string, headers map[string]string) {
 	n.headers = headers
 }
 
+func (n *Notify) getWebhookUrl() string {
+	totalToken := uint64(len(n.tokens))
+	idx := atomic.AddUint64(&n.currTokenIdx, 1) - 1
+	if idx >= totalToken*100 {
+		atomic.StoreUint64(&n.currTokenIdx, 0) // 重置为 0，防止溢出
+	}
+
+	return fmt.Sprintf(n.webhookUrlFormat, n.tokens[idx%totalToken])
+}
+
 // SendMessage 发送消息到指定的 Webhook URL
 func (n *Notify) SendMessage(ctx context.Context, message string) error {
-	req, err := http.NewRequestWithContext(ctx, n.method, n.webhookURL, bytes.NewBufferString(fmt.Sprintf(n.textBodyFormat, message)))
+	req, err := http.NewRequestWithContext(ctx, n.method, n.getWebhookUrl(), bytes.NewBufferString(fmt.Sprintf(n.textBodyFormat, message)))
 	if err != nil {
 		return err
 	}

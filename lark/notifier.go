@@ -1,7 +1,6 @@
 package lark
 
 import (
-	"fmt"
 	"github.com/nuominmin/notifier"
 )
 
@@ -10,10 +9,10 @@ const (
 	TEXT_BODY_FORMAT   = `{"msg_type":"text","content":{"text":"%s"}}`
 )
 
-func NewNotifier(token string) notifier.Notifier {
-	return notifier.NewNotifier(fmt.Sprintf(WEBHOOK_URL_FORMAT, token), TEXT_BODY_FORMAT)
+func NewNotifier(tokens ...string) notifier.Notifier {
+	return notifier.NewNotifier(WEBHOOK_URL_FORMAT, TEXT_BODY_FORMAT, tokens...)
 }
 
-func NewDelayNotifier(token string) notifier.DelayNotifier {
-	return notifier.NewDelayNotifier(fmt.Sprintf(WEBHOOK_URL_FORMAT, token), TEXT_BODY_FORMAT)
+func NewDelayNotifier(tokens ...string) notifier.DelayNotifier {
+	return notifier.NewDelayNotifier(WEBHOOK_URL_FORMAT, TEXT_BODY_FORMAT, tokens...)
 }

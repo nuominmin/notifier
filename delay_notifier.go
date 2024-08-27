@@ -29,10 +29,10 @@ type DelayNotify struct {
 }
 
 // NewDelayNotifier 创建一个新的延迟通知实例
-func NewDelayNotifier(webhookURL string, textBodyFormat string) DelayNotifier {
+func NewDelayNotifier(webhookUrlFormat string, textBodyFormat string, tokens ...string) DelayNotifier {
 	delayNotify := &DelayNotify{
 		sep:         "\\n===\\n",
-		notifier:    NewNotifier(webhookURL, textBodyFormat),
+		notifier:    NewNotifier(webhookUrlFormat, textBodyFormat, tokens...),
 		mu:          sync.Mutex{},
 		done:        make(chan struct{}),
 		wg:          sync.WaitGroup{},

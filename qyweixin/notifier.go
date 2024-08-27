@@ -1,7 +1,6 @@
 package qyweixin
 
 import (
-	"fmt"
 	"github.com/nuominmin/notifier"
 )
 
@@ -11,9 +10,9 @@ const (
 )
 
 func NewNotifier(token string) notifier.Notifier {
-	return notifier.NewNotifier(fmt.Sprintf(WEBHOOK_URL_FORMAT, token), TEXT_BODY_FORMAT)
+	return notifier.NewNotifier(WEBHOOK_URL_FORMAT, TEXT_BODY_FORMAT, token)
 }
 
 func NewDelayNotifier(token string) notifier.DelayNotifier {
-	return notifier.NewDelayNotifier(fmt.Sprintf(WEBHOOK_URL_FORMAT, token), TEXT_BODY_FORMAT)
+	return notifier.NewDelayNotifier(WEBHOOK_URL_FORMAT, TEXT_BODY_FORMAT, token)
 }
