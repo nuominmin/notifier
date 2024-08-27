@@ -11,9 +11,12 @@ import (
 // Notifier 消息通知接口
 type Notifier interface {
 	SendMessage(ctx context.Context, message string) error
+	SetClient(client *http.Client)
+	SetIdentity(identity string)
+	SetRequestConfig(method string, headers map[string]string)
 }
 
-type Notify struct {
+type notify struct {
 	client           *http.Client
 	method           string
 	headers          map[string]string
@@ -21,11 +24,12 @@ type Notify struct {
 	textBodyFormat   string   // 消息转换为 JSON 的函数模板
 	tokens           []string // 钩子地址所需要的 token
 	currTokenIdx     uint64   // 当前使用 token 的索引
+	identity         string   // 标识
 }
 
 // NewNotifier 创建一个新的通知实例
 func NewNotifier(webhookUrlFormat string, textBodyFormat string, tokens ...string) Notifier {
-	return &Notify{
+	return &notify{
 		client:           http.DefaultClient,
 		method:           http.MethodPost, // 默认方法为 POST
 		headers:          map[string]string{"Content-Type": "application/json"},
@@ -36,17 +40,22 @@ func NewNotifier(webhookUrlFormat string, textBodyFormat string, tokens ...strin
 }
 
 // SetClient 设置 HTTP 客户端
-func (n *Notify) SetClient(client *http.Client) {
+func (n *notify) SetClient(client *http.Client) {
 	n.client = client
 }
 
+// SetIdentity 设置标识
+func (n *notify) SetIdentity(identity string) {
+	n.identity = identity
+}
+
 // SetRequestConfig 设置 HTTP 请求方法和头部信息
-func (n *Notify) SetRequestConfig(method string, headers map[string]string) {
+func (n *notify) SetRequestConfig(method string, headers map[string]string) {
 	n.method = method
 	n.headers = headers
 }
 
-func (n *Notify) getWebhookUrl() string {
+func (n *notify) getWebhookUrl() string {
 	totalToken := uint64(len(n.tokens))
 	if totalToken == 0 {
 		return ""
@@ -60,10 +69,14 @@ func (n *Notify) getWebhookUrl() string {
 }
 
 // SendMessage 发送消息到指定的 Webhook URL
-func (n *Notify) SendMessage(ctx context.Context, message string) error {
+func (n *notify) SendMessage(ctx context.Context, message string) error {
 	webhookUrl := n.getWebhookUrl()
 	if webhookUrl == "" {
 		return fmt.Errorf("no webhook url")
+	}
+
+	if n.identity != "" {
+		message = fmt.Sprintf("[%s] %s", n.identity, message)
 	}
 
 	req, err := http.NewRequestWithContext(ctx, n.method, webhookUrl, bytes.NewBufferString(fmt.Sprintf(n.textBodyFormat, message)))
